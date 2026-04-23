@@ -1,0 +1,371 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="desktop_manipulator">
+
+  <!-- ==================== PARAMETERS ==================== -->
+  <xacro:property name="L1" value="0.35"/>
+  <xacro:property name="L2" value="0.25"/>
+  <xacro:property name="L3" value="0.02"/>
+  <xacro:property name="L4" value="0.10"/>
+
+  <!-- Visual radii (matching your PyVista code, converted to metres) -->
+  <xacro:property name="base_height"       value="0.01"/>
+  <xacro:property name="base_radius"        value="0.025"/>
+  <xacro:property name="link_radius"       value="0.007"/>
+  <xacro:property name="hub_radius"        value="0.008"/>
+  <xacro:property name="hub_len"           value="0.020"/>
+  <xacro:property name="teles_outer_radius" value="0.013"/>
+  <xacro:property name="teles_inner_radius" value="0.006"/>
+  <xacro:property name="teles_outer_len"   value="0.020"/>
+  <xacro:property name="teles_inner_len"   value="0.150"/>
+  <xacro:property name="ee_radius"         value="0.006"/>
+  <xacro:property name="ball_radius"       value="0.010"/>
+
+  <!-- Prismatic joint limits (cm -> m) -->
+  <xacro:property name="d4_min" value="0.05"/>
+  <xacro:property name="d4_max" value="0.15"/>
+
+  <!-- Colours -->
+  <xacro:property name="link_color_r" value="0.7"/>
+  <xacro:property name="link_color_g" value="0.7"/>
+  <xacro:property name="link_color_b" value="0.7"/>
+  <xacro:property name="hub_color_r"  value="0.5"/>
+  <xacro:property name="hub_color_g"  value="0.0"/>
+  <xacro:property name="hub_color_b"  value="0.5"/>
+  <xacro:property name="teles_outer_r" value="1.0"/>
+  <xacro:property name="teles_outer_g" value="0.65"/>
+  <xacro:property name="teles_outer_b" value="0.0"/>
+
+  <!-- ==================== MATERIALS ==================== -->
+  <material name="silver">
+    <color rgba="0.7 0.7 0.7 1.0"/>
+  </material>
+
+  
+  <material name="purple">
+    <color rgba="0.5 0.0 0.5 1.0"/>
+  </material>
+  <material name="orange">
+    <color rgba="1.0 0.65 0.0 1.0"/>
+  </material>
+  <material name="dark_grey">
+    <color rgba="0.3 0.3 0.3 1.0"/>
+  </material>
+  <material name="red_transparent">
+    <color rgba="1.0 0.0 0.0 0.4"/>
+  </material>
+  <material name="white">
+    <color rgba="1.0 1.0 1.0 1.0"/>
+  </material>
+
+  <!-- ==================== LINKS AND JOINTS ==================== -->
+
+  <!--
+    base_link: the fixed base sitting on the table.
+    The world-frame origin is at the bottom of link1 (the ground).
+  -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 ${base_height/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${base_radius}" length="${base_height}"/>
+      </geometry>
+      <material name="dark_grey"/>
+    </visual>
+  </link>
+
+  <!--
+    Joint 1: Revolute about Z-axis at the base.
+    DH: a=0, alpha=0, d=L1, theta=theta1
+    The joint sits at z=0 (base level). Link1 extends upward to z=L1.
+  -->
+  <joint name="joint1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link1"/>
+    <origin xyz="0 0 ${L1}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" effort="10" velocity="3.0"/>
+  </joint>
+
+  <!-- Link 1: vertical column from z=0 to z=L1 -->
+  <link name="link1">
+    <!-- The cylinder visual: centred at L1/2, along z -->
+    <visual name="link1_rod">
+      <origin xyz="0 0 ${-L1/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${link_radius}" length="${L1}"/>
+      </geometry>
+      <material name="silver"/>
+    </visual>
+
+    <visual name="link2_rod">
+      <origin xyz="${L2/2} 0 0" rpy="0 ${pi/2} 0"/>
+      <geometry>
+        <cylinder radius="${link_radius}" length="${L2}"/>
+      </geometry>
+      <material name="silver"/>
+    </visual>
+
+  </link>
+
+  <!-- i moved the joint1_hub visual out from link1 purely for visual purpose, a
+  and im connecting using a fixed joint-->
+  <link name="joint1_hub">
+    <visual name="joint1_hub">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${hub_radius}" length="${hub_len}"/>
+      </geometry>
+      <material name="purple"/>
+    </visual>
+  </link>
+
+  <joint name="link1_connect_joint1_hub" type="fixed">
+    <parent link="link1"/>
+    <child link="joint1_hub"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+
+  <!-- i moved the joint1_hub visual out from link1 purely for visual purpose -->
+
+  
+
+  
+
+
+
+
+
+
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin xyz="${L2} 0 0" rpy="${-pi/2} ${-pi/2} 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi/2}" upper="${pi/2}" effort="10" velocity="3.0"/>
+  </joint>
+
+  <!-- Link 2: extends L2 along its local x-axis -->
+  <link name="link2">
+    
+    <visual name="joint2_hub">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${hub_radius}" length="${hub_len}"/>
+      </geometry>
+      <material name="purple"/>
+    </visual>
+  </link>
+
+  <!--
+    Joint 3: Revolute.
+    DH: a=0, alpha=-pi/2, d=L3, theta=theta3
+    
+    From your T23 with theta3=0: R23 = [[1,0,0],[0,0,1],[0,-1,0]], p23 = [0,L3,0]
+    But p23 in frame2 coords is [0, L3, 0] ... which in frame2 means offset 
+    along y2-axis by L3. However DH says d3=L3 along z3.
+    
+    The joint origin in URDF (relative to link2 frame) is at the END of link2:
+    xyz=(L2, 0, 0) with another -pi/2 rotation about x to get the alpha twist.
+    The d=L3 offset appears as a z-offset in the child frame.
+  -->
+  <joint name="joint3" type="revolute">
+    <parent link="link2"/>
+    <child link="link3"/>
+    <origin xyz="0 ${L3} 0" rpy="${-pi/2} ${pi/2} 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" effort="10" velocity="3.0"/>
+  </joint>
+
+  <!--
+    Link 3: short link with offset L3 along z (the DH d3 parameter).
+    Then there's the L4 bracket extending along x3.
+    
+    In your PyVista code, after frame3 you have:
+    - link23: cylinder from p2 to p3 (this is the L3 offset)
+    - L4_segment: cylinder from p3 to p4_base = p3 + i3 * L4
+    
+    So link3 contains: the short L3 segment along z, then the L4 bracket along x.
+  -->
+  <link name="link3">
+    <!-- The short d=L3 segment along local z -->
+    <visual name="link3_rod">
+      <origin xyz="0 0 ${-L3/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${link_radius}" length="${L3}"/>
+      </geometry>
+      <material name="silver"/>
+    </visual>
+ 
+    <!-- put the connection between joint3 and the outer telescope also under link3. -->
+    <visual name="link3_rod_2">
+      <origin xyz="${L4/2} 0 0" rpy="0 ${pi/2} 0"/>
+      <geometry>
+        <cylinder radius="${link_radius}" length="${L4}"/>
+      </geometry>
+      <material name="silver"/>
+    </visual>
+  </link>
+
+  <!-- i moved the joint1_hub visual out from link3 purely for visual purpose, a
+  and im connecting using a fixed joint-->
+  <link name="joint3_hub">
+    <visual name="joint3_hub">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${hub_radius}" length="${hub_len}"/>
+      </geometry>
+      <material name="purple"/>
+    </visual>
+  </link>
+  <joint name="link3_connect_joint3_hub" type="fixed">
+    <parent link="link3"/>
+    <child link="joint3_hub"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <!-- i moved the joint3_hub visual out from link3 purely for visual purpose -->
+
+
+  <!-- i moved the telescope_outer visual out from link3 purely for visual purpose, a
+  and im connecting using a fixed joint-->
+  <link name="telescope_outer">
+    <visual name="telescope_outer">
+      <origin xyz="${L4} 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${teles_outer_radius}" length="${teles_outer_len}"/>
+      </geometry>
+      <material name="orange"/>
+    </visual>
+  </link>
+  <joint name="link3_connect_telescope_outer" type="fixed">
+    <parent link="link3"/>
+    <child link="telescope_outer"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <!-- i moved the telescope_outer visual out from link3 purely for visual purpose -->
+    
+
+
+
+
+
+    
+  <!--
+    Joint 4: Prismatic.
+    DH: a=L4, alpha=0, d=d4, theta=0
+    
+    The joint sits at the end of the bracket: (L4, 0, L3) in frame3.
+    No additional rotation (alpha=0, theta=0).
+    The prismatic axis is along z (the telescope slides along the local z-axis,
+    which is the k3 direction from your code).
+  -->
+  <joint name="joint4" type="prismatic">
+    <parent link="link3"/>
+    <child link="link4"/>
+    <origin xyz="${L4} 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${d4_min}" upper="${d4_max}" effort="10" velocity="0.5"/>
+  </joint>
+
+
+  <link name="link4">
+    <visual name="inner_tube">
+      <origin xyz="0 0 ${-teles_inner_len/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${teles_inner_radius}" length="${teles_inner_len}"/>
+      </geometry>
+      <material name="silver"/>
+    </visual>
+  </link>
+
+  <!--
+    End effector: the L-shaped piece.
+    DH row e: a=-L4/2, alpha=0, d=L4/2, theta=0
+    
+    From your code:
+      p4 = p4_base + k3 * d4        (top of telescope)
+      p_mid = p4 - i3 * (L4/2)      (horizontal piece: -x direction by L4/2)
+      pe = p_mid + k3 * (L4/2)      (vertical piece: +z direction by L4/2)
+    
+    So relative to link4's origin (which is at p4):
+      horizontal arm: from (0,0,0) to (-L4/2, 0, 0) along -x
+      vertical arm:   from (-L4/2, 0, 0) to (-L4/2, 0, L4/2) along z
+    
+    We attach this as a fixed joint.
+  -->
+  <joint name="ee_fixed" type="fixed">
+    <parent link="link4"/>
+    <child link="end_effector"/>
+    <origin xyz="${-L4/2} 0 ${L4/2}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="end_effector">
+    <!-- Horizontal arm of the L: from origin to (-L4/2, 0, 0) -->
+    <visual name="ee_horizontal">
+      <origin xyz="0 0 ${-L4/4}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${ee_radius}" length="${L4/2}"/>
+      </geometry>
+      <material name="silver"/>
+    </visual>
+    <!-- Vertical arm of the L: from (-L4/2, 0, 0) to (-L4/2, 0, L4/2) -->
+    <visual name="ee_vertical">
+      <origin xyz="${L4/4} 0 ${-L4/2}" rpy="0 ${pi/2} 0"/>
+      <geometry>
+        <cylinder radius="${ee_radius}" length="${L4/2}"/>
+      </geometry>
+      <material name="silver"/>
+    </visual>
+    <!-- Ball at the corner of the L -->
+    <visual name="ee_ball_corner">
+      <origin xyz="0 0 ${-L4/2}" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${ball_radius}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <!-- Ball at the tip of the L (the actual end-effector point) -->
+    <visual name="ee_ball_tip">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${ball_radius}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <!-- Ball at the top of the telescope -->
+    <visual name="ee_ball_top">
+      <origin xyz="${L4/2} 0 ${-L4/2}" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${ball_radius}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+  </link>
+
+
+
+
+  <ros2_control name="manipulator_system" type="system">
+    <hardware>
+      <plugin>mock_components/GenericSystem</plugin>
+    </hardware>
+    <joint name="joint1">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+    <joint name="joint2">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+    <joint name="joint3">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+    <joint name="joint4">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+  </ros2_control>
+
+</robot>

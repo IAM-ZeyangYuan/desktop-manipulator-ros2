@@ -1,0 +1,10 @@
+# Request: arrays of waypoint joint values + time spacing
+float64[] theta1
+float64[] theta2
+float64[] theta3
+float64[] d4
+float64 delta_t
+---
+# Response
+bool success
+string message
