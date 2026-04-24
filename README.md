@@ -19,7 +19,7 @@ The project involves:
 - Visualising the workspace using 3D alpha shape construction and its Jacobian-based sensitivity analysis
 - The forward/inverse kinematics and Jacobian of the manipulator
 
-
+ 
 
 
 
