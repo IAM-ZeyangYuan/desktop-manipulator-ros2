@@ -1,35 +1,42 @@
 # Desktop Manipulator — ROS2
 
-A 4-DoF RRPR desktop manipulator with trajectory planning, self-collision checking, and ROS2 integration using `ros2_control`.
+**Duration:**  11/2024 – 02/2025, 03/2026 - present  
+**Tags:** `ROS2` · `ros2_control` ·`Python` · `Manipulator` · `Trajectory Planning`
 
-<!-- Replace with your actual GIF once recorded -->
-![RViz2 Demo](docs/images/rviz_demo.gif)
+
+
 
 ## Overview
 
-I designed a 4-DoF desktop manipulator for simple desktop tasks such as holding and transporting objects. The project spans from kinematic derivation through to a full ROS2 control pipeline.
+I designed a 4-DoF RRRP manipulator for simple desktop tasks such as holding and transporting objects. 
+
+<img src="docs/images/rviz2.gif" alt="RViz2 Demo" width="200"/>
 
 The project involves:
-- Deriving the manipulator's forward/inverse kinematics and Jacobian
-- Visualising the workspace using 3D alpha shape construction
-- Jacobian-based sensitivity analysis on end-effector position and orientation
+- ROS2 architecture with `ros2_control`, `JointTrajectoryController`, and RViz2 marker visualization
 - Trajectory planning through 12 waypoints using cubic spline and parabolic blend interpolation
 - Self-collision checking along the planned trajectory
-- ROS2 integration with `ros2_control`, `JointTrajectoryController`, and RViz2 marker visualization
+- Visualising the workspace using 3D alpha shape construction and its Jacobian-based sensitivity analysis
+- The forward/inverse kinematics and Jacobian of the manipulator
 
-## System Architecture
 
-![Architecture](docs/images/architecture.png)
+
+
+
+
+
 
 ## Configuration
 
 The manipulator consists of 3 mutually orthogonal revolute joints and a prismatic joint with an L-shaped end effector.
 
 <p float="left">
-  <img src="docs/images/configuration.png" width="400"/>
+  <img src="docs/images/configuration.png" width="300"/>
 </p>
 
-### DH Parameters
+
+<details>
+<summary>DH Parameters (click to expand)</summary>
 
 | i | Link length a<sub>i−1</sub> | Link twist α<sub>i−1</sub> | Link offset d<sub>i</sub> | Joint angle θ<sub>i</sub> |
 |---|---|---|---|---|
@@ -38,6 +45,71 @@ The manipulator consists of 3 mutually orthogonal revolute joints and a prismati
 | 3 | 0 | −π/2 | L₃ = 2 cm | θ₃ ∈ (−π, π] |
 | 4 | L₄ = 10 cm | 0 | d₄ ∈ [5, 15] cm | 0 |
 | e | −L₄/2 | 0 | L₄/2 | 0 |
+
+</details>
+
+
+
+
+## ROS2 Integration
+
+The project uses a standard `ros2_control` architecture:
+
+**Packages:**
+- `manipulator_description` — URDF/xacro robot model, `ros2_control` hardware config, launch files, RViz config
+- `manipulator_planning` — Trajectory interpolation, action client for `JointTrajectoryController`, FK module, RViz marker visualization
+- `manipulator_interfaces` — Custom service definition for waypoint-based trajectory planning
+
+**Data flow:** The planner node runs the interpolation and sends a `FollowJointTrajectory` action goal to the `JointTrajectoryController`, which commands the mock hardware interface. The `JointStateBroadcaster` publishes joint states, `robot_state_publisher` computes TF transforms, and RViz2 displays the robot model along with trajectory path and waypoint markers.
+
+## Prerequisites
+
+- Ubuntu 24.04
+- ROS2 Jazzy
+- `ros2_control`, `ros2_controllers`
+- Python: NumPy, SciPy
+
+## Build
+
+```bash
+mkdir -p ~/manipulator_ws/src
+cd ~/manipulator_ws/src
+git clone https://github.com/IAM-ZeyangYuan/desktop-manipulator-ros2.git .
+cd ~/manipulator_ws
+rosdep install --from-paths src --ignore-src -r -y
+pip install scipy
+colcon build
+source install/setup.bash
+```
+
+## Run
+
+### Manual joint control (GUI sliders)
+
+```bash
+ros2 launch manipulator_description display.launch.py
+```
+
+### Automated trajectory playback
+
+```bash
+ros2 launch manipulator_description trajectory.launch.py
+```
+
+### ros2_control with action-based trajectory execution
+
+Terminal 1 — launch the control pipeline:
+
+```bash
+ros2 launch manipulator_description ros2_control.launch.py
+```
+
+Terminal 2 — run the planner:
+
+```bash
+ros2 run manipulator_planning trajectory_action_client
+```
+
 
 ## Kinematics
 
@@ -102,64 +174,7 @@ These values are consistent with the intended scale and operating regime of the 
 
 A self-collision check was performed along the trajectory, focusing on the second link from the base and the inner body of the telescopic prismatic joint. The distance between the finite centerlines of the two bodies remains consistently above the collision threshold (sum of the radii). Configurations that cause self-collision exist in the workspace but can be mitigated by using a retractable/expandable prismatic joint.
 
-## ROS2 Integration
 
-The project uses a standard `ros2_control` architecture:
-
-**Packages:**
-- `manipulator_description` — URDF/xacro robot model, `ros2_control` hardware config, launch files, RViz config
-- `manipulator_planning` — Trajectory interpolation, action client for `JointTrajectoryController`, FK module, RViz marker visualization
-- `manipulator_interfaces` — Custom service definition for waypoint-based trajectory planning
-
-**Data flow:** The planner node runs the interpolation and sends a `FollowJointTrajectory` action goal to the `JointTrajectoryController`, which commands the mock hardware interface. The `JointStateBroadcaster` publishes joint states, `robot_state_publisher` computes TF transforms, and RViz2 displays the robot model along with trajectory path and waypoint markers.
-
-## Prerequisites
-
-- Ubuntu 24.04
-- ROS2 Jazzy
-- `ros2_control`, `ros2_controllers`
-- Python: NumPy, SciPy
-
-## Build
-
-```bash
-mkdir -p ~/manipulator_ws/src
-cd ~/manipulator_ws/src
-git clone https://github.com/IAM-ZeyangYuan/desktop-manipulator-ros2.git .
-cd ~/manipulator_ws
-rosdep install --from-paths src --ignore-src -r -y
-pip install scipy
-colcon build
-source install/setup.bash
-```
-
-## Run
-
-### Manual joint control (GUI sliders)
-
-```bash
-ros2 launch manipulator_description display.launch.py
-```
-
-### Automated trajectory playback
-
-```bash
-ros2 launch manipulator_description trajectory.launch.py
-```
-
-### ros2_control with action-based trajectory execution
-
-Terminal 1 — launch the control pipeline:
-
-```bash
-ros2 launch manipulator_description ros2_control.launch.py
-```
-
-Terminal 2 — run the planner:
-
-```bash
-ros2 run manipulator_planning trajectory_action_client
-```
 
 ## Analysis Scripts
 
