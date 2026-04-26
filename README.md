@@ -10,13 +10,19 @@
 
 I designed a 4-DoF RRRP manipulator for simple desktop tasks such as holding and transporting objects. 
 
-<img src="docs/images/rviz2.gif" alt="RViz2 Demo" width="200"/>
+
+
+<p align="center">
+  <img src="docs/images/rviz2.gif" width="300"/><br/>
+  <sub>Trajectory animation in RViz2</sub>
+</p>
+
 
 The project involves:
 - ROS2 architecture with `ros2_control`, `JointTrajectoryController`, and RViz2 marker visualization
 - Trajectory planning through 12 waypoints using cubic spline and parabolic blend interpolation
 - Self-collision checking along the planned trajectory
-- Visualising the workspace using 3D alpha shape construction and its Jacobian-based sensitivity analysis
+- Workspace visualization and its Jacobian-based sensitivity analysis
 - The forward/inverse kinematics and Jacobian of the manipulator
 
  
@@ -30,8 +36,11 @@ The project involves:
 
 The manipulator consists of 3 mutually orthogonal revolute joints and a prismatic joint with an L-shaped end effector.
 
-<p float="left">
-  <img src="docs/images/configuration.png" width="200"/>
+
+
+<p align="center">
+  <img src="docs/images/configuration.png" width="300"/><br/>
+  <sub>Configuration of the manipulator</sub>
 </p>
 
 
@@ -58,16 +67,17 @@ The project uses a standard `ros2_control` architecture:
 **Packages:**
 - `manipulator_description` — URDF/xacro robot model, `ros2_control` hardware and controller config, launch files, RViz config
 - `manipulator_planning` — Trajectory interpolation, action client for `JointTrajectoryController`, FK module
-- `manipulator_interfaces` — Custom service interface for waypoint-based trajectory planning
+- `manipulator_interfaces` —  Custom interface for a waypoint-based trajectory planning service
 
 **Data flow:** The planner node runs the interpolation and sends a `FollowJointTrajectory` action goal to the `JointTrajectoryController`, which commands the mock hardware interface. The `JointStateBroadcaster` publishes joint states, `robot_state_publisher` computes TF transforms, and RViz2 displays the robot model along with trajectory path and waypoint markers.
 
-## Prerequisites
+<!--## Prerequisites
 
 - Ubuntu 24.04
 - ROS2 Jazzy
 - `ros2_control`, `ros2_controllers`
 - Python: NumPy, SciPy
+--->
 
 ## Build
 
@@ -105,11 +115,14 @@ ros2 run manipulator_planning trajectory_action_client
 ros2 launch manipulator_description Display.launch.py
 ```
 
+
+
 ### Automated trajectory playback
 
 ```bash
 ros2 launch manipulator_description trajectory.launch.py
 ```
+--->
 
 ### Trajectory playback using service calls
 
@@ -119,7 +132,7 @@ Terminal 1 — launch the service-based pipeline:
 ros2 launch manipulator_description service.launch.py
 ```
 
-Terminal 2 — call the service with the way points
+Terminal 2 — call the service with the with example way points 
 
 ```bash
 ros2 service call /plan_trajectory manipulator_interfaces/srv/PlanTrajectory "{
@@ -130,7 +143,6 @@ ros2 service call /plan_trajectory manipulator_interfaces/srv/PlanTrajectory "{
   delta_t: 2.5
 }"
 ```
---->
 
 
 
@@ -145,18 +157,18 @@ A trajectory was planned through 12 waypoints with a time interval of 2.5s betwe
 - **Parabolic blend** for θ₂ and d₄ — their via-point values are held constant between consecutive intervals, and cubic spline interpolation would introduce overshoot outside joint limits.
 - **Cubic spline** for θ₁ and θ₃ — their trajectories exhibit a periodic trend, and cubic splines handle this smoothly.
 
-At Δt = 2.5s, the resulting peak velocities and accelerations are:
+At Δt = 2.5s, the resulting peak velocities and accelerations are within the intended scale and operating regime of the desktop manipulator.
 
 | | Revolute | Prismatic |
 |---|---|---|
 | Max velocity | 2.52 rad/s | 3.88 cm/s |
 | Max acceleration | 4.74 rad/s² | 3.84 cm/s² |
 
-These values are consistent with the intended scale and operating regime of the desktop manipulator.
 
 
 
-<table>
+
+<table align="center">
   <tr>
     <td align="center">
       <img src= "docs/images/traj_position.png" width="300"/><br/>
@@ -171,7 +183,7 @@ These values are consistent with the intended scale and operating regime of the 
 
 ### Self-Collision Check
 
-A self-collision check was performed along the trajectory, focusing on the second link from the base and the inner body of the telescopic prismatic joint. The distance between the finite centerlines of the two bodies remains consistently above the collision threshold (sum of the radii). Configurations that cause self-collision exist in the workspace but can be mitigated by using a retractable/expandable prismatic joint.
+A self-collision check was performed along the trajectory, focusing on the second link from the base and the inner body of the telescopic prismatic joint. The distance between the finite centerlines of the two bodies remains consistently above the collision threshold (sum of the radii). Configurations that cause self-collision exist in the workspace but can be mitigated by using a retractable prismatic joint.
 
 ## Workspace
 
@@ -179,12 +191,12 @@ The workspace was generated by sampling 3.5 million joint configurations and con
 
 | Metric | Value |
 |---|---|
-| Estimated volume | 1.376 × 10⁵ cm³ |
-| Max reach | 65.565 cm |
+| Estimated volume V| 1.376 × 10⁵ cm³ |
+| Max reach R| 65.565 cm |
 | Workspace efficiency (V / (4/3 π R³)) | 0.117 |
 
 
-<table>
+<table align="center">
   <tr>
     <td align="center">
       <img src= "docs/images/workspace.png" width="300"/><br/>
@@ -198,13 +210,11 @@ The workspace was generated by sampling 3.5 million joint configurations and con
 </table>
 
 ### Sensitivity Analysis
-The sensitivity analysis quantifies how each joint affects the end-effector position and orientation. The mean and 90th percentile of the Jacobian column norms were plotted across the sampled configurations.
+The sensitivity analysis quantifies how each joint affects the end-effector position (and orientation). The mean and 90th percentile of the Jacobian column norms were plotted across the sampled configurations.
 
 ## Kinematics
 
-### Forward Kinematics
-
-FK transforms coordinates and orientations between frames via joint variables. It was used in workspace generation and trajectory planning.
+**Forward Kinematics**: FK was used in workspace generation and trajectory planning.
 
 <details>
 <summary>Analytic expression (click to expand)</summary>
@@ -239,11 +249,12 @@ $$
 All the parameters are listed in the DH table.
 
 </details>
+<br>
 
-### Inverse Kinematics
-
-The IK solves for joint variables given a desired end-effector pose. Since the manipulator provides only 4 controllable DoF, the IK does not always yield a solution for an arbitrary 6-DoF pose request. This is sufficient for grasping and transporting tasks; additional revolute joints at the end effector can be added if greater orientation flexibility is required.
-
+**Inverse Kinematics**: The IK does not always yield a solution for an arbitrary 6-DoF pose request since the manipulator only provides 4 controllable DoFs. This is sufficient for simply holding and transporting tasks.
+<!--
+The IK solves for joint variables given a desired end-effector pose. Since the manipulator provides only 4 controllable DoF, the IK does not always yield a solution for an arbitrary 6-DoF pose request. This is sufficient for grasping and transporting tasks; additional revolute joints at the end effector can be added if greater orientation flexibility is required. 
+--->
 <details>
 <summary>Analytic expression (click to expand)</summary>
 
@@ -275,9 +286,9 @@ The joint variables are:
 
 </details>
 
-### Jacobian
+<br>
 
-The Jacobian associates the velocity of the joint variables with the velocity of the end effector. It is used for sensitivity analysis and can be extended to velocity control and singularity analysis.
+**Jacobian**: The Jacobian was used for sensitivity analysis and can be extended to velocity control and singularity analysis.
 
 <details>
 <summary>Analytic expression (click to expand)</summary>
@@ -351,7 +362,7 @@ $$
 
 ## Analysis Scripts
 
-The `analysis/` folder contains the original pure-Python scripts used for kinematic derivation, workspace generation, trajectory planning, and visualization (pre-ROS2):
+The `analysis/` folder contains Python scripts used for trajectory planning, self collision check, workspace visualization, jacobian and sensitivity analysis.
 
 | Script | Description |
 |---|---|
