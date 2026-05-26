@@ -1,6 +1,10 @@
 import rclpy
+import csv
+import os
 from rclpy.node import Node
 from rclpy.action import ActionClient
+from sensor_msgs.msg import JointState
+from rclpy.time import Time
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
@@ -25,12 +29,49 @@ class TrajectoryActionClient(Node):
         self.joint_names = ['joint1', 'joint2', 'joint3', 'joint4']
         self.marker_pub = self.create_publisher(MarkerArray, '/trajectory_markers', 10) #the second entry is the topic name
 
+        #set up for loggint the actual joint states
+        self.actual_log = []
+        self.logging = False #this is a switch that controls when is the msg from the /joint_state logged
+        self.log_start_time = None
+
+        self.create_subscription(
+            JointState,
+            '/joint_states',
+            self.actual_state_callback,
+            10
+        )
+
+    def save_commanded_trajectory(self, times, th1, th2, th3, d4,
+                                output_path='~/manipulator_ctrl_ws/traj_data/commanded.csv'):
+        output_path = os.path.expanduser(output_path)
+        with open(output_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['time', 'cmd_j1', 'cmd_j2', 'cmd_j3', 'cmd_j4'])
+            for i in range(len(times)):
+                writer.writerow([
+                    float(times[i]),
+                    float(th1[i]),
+                    float(th2[i]),
+                    float(th3[i]),
+                    float(d4[i]),
+                ])
+        self.get_logger().info(f'Saved commanded trajectory: {output_path}')
+
     def send_trajectory(self, theta1_wp, theta2_wp, theta3_wp, d4_wp, delta_t):
         self.get_logger().info('Running interpolation...')
 
         times, th1, th2, th3, d4 = plan_trajectory(
             theta1_wp, theta2_wp, theta3_wp, d4_wp, delta_t
         )
+
+        #save commanded trajectory to calculate metrics such as error
+        self.save_commanded_trajectory(times, th1, th2, th3, d4)
+
+        #start to log the actual joint states from the /joint_state topic
+        self.logging = True
+        self.actual_log = []
+        self.log_start_time = None
+
 
         self.publish_markers(times, th1, th2, th3, d4,
                      theta1_wp, theta2_wp, theta3_wp, d4_wp)
@@ -83,6 +124,17 @@ class TrajectoryActionClient(Node):
     def result_callback(self, future):
         result = future.result().result
         self.get_logger().info(f'Trajectory finished. Error code: {result.error_code}')
+
+        #after finishing the trajectory, stop logging the actual joint states
+        self.logging = False
+        output_path = os.path.expanduser('~/manipulator_ctrl_ws/traj_data/actual.csv')
+        with open(output_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['time', 'actual_j1', 'actual_j2', 'actual_j3', 'actual_j4'])
+            for row in self.actual_log:
+                writer.writerow(row)
+        self.get_logger().info(f'Saved actual trajectory: {output_path}')
+
 
     #visualizing the trajectory and the waypoints    
     def publish_markers(self, times, th1, th2, th3, d4,
@@ -140,12 +192,34 @@ class TrajectoryActionClient(Node):
     def _republish_markers(self):
         if self._cached_markers_args is not None:
             self.publish_markers(*self._cached_markers_args)
+    
+    #logging the actual joint states to a csv file
+    def actual_state_callback(self, msg):
+        if not self.logging:
+            return
+
+        now = self.get_clock().now()
+        if self.log_start_time is None:
+            self.log_start_time = now
+
+        elapsed = (now - self.log_start_time).nanoseconds / 1e9
+
+        positions = [0.0] * 4 #default value if name is not in msg.name
+        for i, name in enumerate(self.joint_names):
+            if name in msg.name:
+                idx = msg.name.index(name)
+                positions[i] = msg.position[idx]
+
+        self.actual_log.append([elapsed] + positions)
+
+
+
 
 def main(args=None):
     rclpy.init(args=args)
     node = TrajectoryActionClient()
 
-    # your original 12 waypoints
+    # start with original 12 waypoints in python
     import numpy as np
     theta1_wp = [-np.pi/4, np.pi/4, np.pi/8, -np.pi/8,
                  -np.pi/4, np.pi/4, np.pi/8, -np.pi/8,
@@ -167,11 +241,13 @@ def main(args=None):
                  -np.arccos((21*np.sqrt(3)-35)/5)+np.pi,
                  -np.arccos(1/30)+np.pi, np.arccos(1/30)-np.pi]
     theta3_wp = np.array(theta3_wp) - np.pi/2
+    
 
+    #modified the joint values so that they now fit the urdf convention
 
-    d4_wp = [0.14, 0.14, 0.15, 0.15,
+    d4_wp = [0.14, 0.14, 0.13, 0.13,
              0.09, 0.09, 0.08, 0.08,
-             0.14, 0.14, 0.15, 0.15]
+             0.14, 0.14, 0.13, 0.13]
 
     node.send_trajectory(theta1_wp, theta2_wp, theta3_wp, d4_wp, delta_t=2.5)
 

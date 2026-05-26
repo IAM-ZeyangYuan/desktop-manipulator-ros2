@@ -36,11 +36,7 @@ def generate_launch_description():
             parameters=[{'robot_description': robot_description}],
         ),
  
-        # --- joint_state_publisher_gui ---
-        # Opens a small window with a slider for each movable joint in your URDF.
-        # When you drag a slider, it publishes a JointState message on /joint_states.
-        # robot_state_publisher picks that up and updates TFs.
-        # In Phase 2, we'll replace this with our own trajectory_publisher node.
+        
         Node(
             package='manipulator_planning',
             executable='trajectory_publisher',

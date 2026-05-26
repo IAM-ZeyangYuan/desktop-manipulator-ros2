@@ -143,26 +143,7 @@
       </geometry>
     </collision>
 
-    <inertial>
-      <origin xyz="0 0 ${-L1/2}" rpy="0 0 0"/>
-      <mass value="${density*pi*link_radius**2*L1}"/>
-      <inertia ixx="${density*pi*link_radius**2*L1*(3*link_radius**2+L1**2)/12}" ixy="0" ixz="0"
-               iyy="${density*pi*link_radius**2*L1*(3*link_radius**2+L1**2)/12}" iyz="0"
-               izz="${density*pi*link_radius**4*L1/2}"/>
-    </inertial>
-  </link>
-
-  <joint name="link1_connect_link1_h_rod" type="fixed">
-    <parent link="link1"/>
-    <child link="link1_h_rod"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-  </joint>
-
-  <link name="link1_h_rod">
-    <!-- the longest horizontal rod, with length L2 -->
-   
-
-    <visual name="link1_h_rod">
+    <visual name="link2_rod">
       <origin xyz="${L2/2} 0 0" rpy="0 ${pi/2} 0"/>
       <geometry>
         <cylinder radius="${link_radius}" length="${L2}"/>
@@ -178,17 +159,13 @@
     </collision>
 
     <inertial>
-      <origin xyz="0 0 ${L2/2}" rpy="0 ${pi/2} 0"/>
-      <mass value="${density*pi*link_radius**2*L2}"/>
-      <inertia ixx="${density*pi*link_radius**2*L2*(3*link_radius**2+L2**2)/12}" ixy="0" ixz="0"
-               iyy="${density*pi*link_radius**2*L2*(3*link_radius**2+L2**2)/12}" iyz="0"
-               izz="${density*pi*link_radius**4*L2/2}"/>
+      <origin xyz="0 0 ${-L1/2}" rpy="0 0 0"/>
+      <mass value="${density*pi*link_radius**2*L1}"/>
+      <inertia ixx="${density*pi*link_radius**2*L1*(3*link_radius**2+L1**2)/12}" ixy="0" ixz="0"
+               iyy="${density*pi*link_radius**2*L1*(3*link_radius**2+L1**2)/12}" iyz="0"
+               izz="${density*pi*link_radius**4*L1/2}"/>
     </inertial>
   </link>
-
-
-
-
 
   <!-- i moved the joint1_hub visual out from link1 purely for visual purpose, a
   and im connecting using a fixed joint-->
@@ -287,7 +264,7 @@
     <child link="link3"/>
     <origin xyz="0 ${L3} 0" rpy="${-pi/2} ${pi/2} 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="${-pi*2}" upper="${pi}" effort="10" velocity="3.0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="10" velocity="3.0"/>
   </joint>
 
   <!--
@@ -341,49 +318,6 @@
                izz="${density*pi*link_radius**4*L3/2}"/>
     </inertial>
   </link>
-
-  <joint name="link3_connect_link3_rod_2" type="fixed">
-    <parent link="link3"/>
-    <child link="link3_rod_2"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-  </joint>
-
-  <link name = "link3_rod_2">
-  <!-- put the connection between joint3 and the outer telescope also under link3. -->
-    <visual name="link3_rod_2">
-      <origin xyz="${L4/2} 0 0" rpy="0 ${pi/2} 0"/>
-      <geometry>
-        <cylinder radius="${link_radius}" length="${L4}"/>
-      </geometry>
-      <material name="silver"/>
-    </visual>
-
-    <collision>
-      <origin xyz="${L4/2} 0 0" rpy="0 ${pi/2} 0"/>
-      <geometry>
-        <cylinder radius="${link_radius}" length="${L4}"/>
-      </geometry>
-    </collision>
-
-    <inertial>
-      <origin xyz="${L4/2} 0 0" rpy="0 ${pi/2} 0"/>
-      <mass value="${density*pi*link_radius**2*L4}"/>
-      <inertia ixx="${density*pi*link_radius**2*L4*(3*link_radius**2+L4**2)/12}" ixy="0" ixz="0"
-               iyy="${density*pi*link_radius**2*L4*(3*link_radius**2+L4**2)/12}" iyz="0"
-               izz="${density*pi*link_radius**4*L4/2}"/>
-    </inertial>
-  </link>
-
-
-
-
-
-
-
-
-
-
-
 
   <!-- i moved the joint1_hub visual out from link3 purely for visual purpose, a
   and im connecting using a fixed joint-->
@@ -541,22 +475,6 @@
       </geometry>
     </collision>
 
-    <inertial>
-      <origin xyz="0 0 ${-L4/4}" rpy="0 0 0"/>
-      <mass value="${density*pi*ee_radius**2*(L4/2)}"/>
-      <inertia ixx="${density*pi*ee_radius**2*(L4/2)*(3*ee_radius**2+(L4/2)**2)/12}" ixy="0" ixz="0"
-               iyy="${density*pi*ee_radius**2*(L4/2)*(3*ee_radius**2+(L4/2)**2)/12}" iyz="0"
-               izz="${density*pi*ee_radius**4*(L4/2)/2}"/>
-    </inertial>
-  </link>
-
-  <joint name="end_effector_connect_ee_vertical" type="fixed">
-    <parent link="end_effector"/>
-    <child link="ee_vertical"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-  </joint>
-
-  <link name = "ee_vertical">
     <!-- Vertical arm of the L: from (-L4/2, 0, 0) to (-L4/2, 0, L4/2) -->
     <visual name="ee_vertical">
       <origin xyz="${L4/4} 0 ${-L4/2}" rpy="0 ${pi/2} 0"/>
@@ -573,22 +491,6 @@
       </geometry>
     </collision>
 
-    <inertial>
-      <origin xyz="${L4/4} 0 ${-L4/2}" rpy="0 ${pi/2} 0"/>
-      <mass value="${density*pi*ee_radius**2*(L4/2)}"/>
-      <inertia ixx="${density*pi*ee_radius**2*(L4/2)*(3*ee_radius**2+(L4/2)**2)/12}" ixy="0" ixz="0"
-               iyy="${density*pi*ee_radius**2*(L4/2)*(3*ee_radius**2+(L4/2)**2)/12}" iyz="0"
-               izz="${density*pi*ee_radius**4*(L4/2)/2}"/>
-    </inertial>
-  </link>
-
-  <joint name="end_effector_connect_ee_ball_corner" type="fixed">
-    <parent link="end_effector"/>
-    <child link="ee_ball_corner"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-  </joint>
-
-  <link name = "ee_ball_corner">
     <!-- Ball at the corner of the L -->
     <visual name="ee_ball_corner">
       <origin xyz="0 0 ${-L4/2}" rpy="0 0 0"/>
@@ -605,24 +507,6 @@
       </geometry>
     </collision>
 
-    <inertial>
-      <origin xyz="0 0 ${-L4/2}" rpy="0 0 0"/>
-      <mass value="${density*4*pi*ball_radius**3/3}"/>
-      <inertia ixx="${8*density*pi*ball_radius**5/15}" ixy="0" ixz="0"
-               iyy="${8*density*pi*ball_radius**5/15}" iyz="0"
-               izz="${8*density*pi*ball_radius**5/15}"/>
-    </inertial>
-
-  </link>
-
-
-  <joint name="end_effector_connect_ee_ball_tip" type="fixed">
-    <parent link="end_effector"/>
-    <child link="ee_ball_tip"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-  </joint>
-
-  <link name = "ee_ball_tip">
     <!-- Ball at the tip of the L (the actual end-effector point) -->
     <visual name="ee_ball_tip">
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -639,23 +523,6 @@
       </geometry>
     </collision>
 
-    <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="${density*4*pi*ball_radius**3/3}"/>
-      <inertia ixx="${8*density*pi*ball_radius**5/15}" ixy="0" ixz="0"
-               iyy="${8*density*pi*ball_radius**5/15}" iyz="0"
-               izz="${8*density*pi*ball_radius**5/15}"/>
-    </inertial>
-
-  </link>
-
-  <joint name="end_effector_connect_ee_ball_top" type="fixed">
-    <parent link="end_effector"/>
-    <child link="ee_ball_top"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-  </joint>
-
-  <link name = "ee_ball_top">
     <!-- Ball at the top of the telescope -->
     <visual name="ee_ball_top">
       <origin xyz="${L4/2} 0 ${-L4/2}" rpy="0 0 0"/>
@@ -673,13 +540,12 @@
     </collision>
 
     <inertial>
-      <origin xyz="${L4/2} 0 ${-L4/2}" rpy="0 0 0"/>
-      <mass value="${density*4*pi*ball_radius**3/3}"/>
-      <inertia ixx="${8*density*pi*ball_radius**5/15}" ixy="0" ixz="0"
-               iyy="${8*density*pi*ball_radius**5/15}" iyz="0"
-               izz="${8*density*pi*ball_radius**5/15}"/>
+      <origin xyz="0 0 ${-L4/4}" rpy="0 0 0"/>
+      <mass value="${density*pi*ee_radius**2*(L4/2)}"/>
+      <inertia ixx="${density*pi*ee_radius**2*(L4/2)*(3*ee_radius**2+(L4/2)**2)/12}" ixy="0" ixz="0"
+               iyy="${density*pi*ee_radius**2*(L4/2)*(3*ee_radius**2+(L4/2)**2)/12}" iyz="0"
+               izz="${density*pi*ee_radius**4*(L4/2)/2}"/>
     </inertial>
-    
   </link>
 
 
@@ -689,54 +555,31 @@
     <hardware>
       <!-- <plugin>manipulator_hardware/SimulatedRobot</plugin> -->
       <plugin>gz_ros2_control/GazeboSimSystem</plugin>
-      <param name="position_proportional_gain">2.5</param>
-      <!-- the following params are for the c++ hardware plugin -->
-      <!-- <param name = "tau">0.1</param>
-      <param name = "noise_stddev">0.001</param> -->
+      <param name = "tau">0.1</param>
+      <param name = "noise_stddev">0.001</param>
     </hardware>
-
-    <!-- setting the initial_value at the start of the sim to match the first point of the planned trajectory -->
     <joint name="joint1">
-      <command_interface name="position">
-        <param name="initial_value">-0.785</param>
-      </command_interface>
-      <state_interface name="position">
-        <param name="initial_value">-0.785</param> 
-      </state_interface>
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <!-- can i use "${-pi/2}" here? -->
       <param name="min_position">-3.14</param> 
       <param name="max_position">3.14</param>
     </joint>
-
     <joint name="joint2">
-      <command_interface name="position">
-        <param name="initial_value">1.047</param>
-      </command_interface>
-      <state_interface name="position">
-        <param name="initial_value">1.047</param>
-      </state_interface>
+      <command_interface name="position"/>
+      <state_interface name="position"/>
       <param name="min_position">-1.57</param> 
       <param name="max_position">1.57</param>      
     </joint>
-
     <joint name="joint3">
-      <command_interface name="position">
-        <param name="initial_value">-2.86</param>
-      </command_interface>
-      <state_interface name="position">
-        <param name="initial_value">-2.86</param>
-      </state_interface>
-      <!-- <param name="min_position">-6.28</param> 
-      <param name="max_position">6.28</param> -->
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="min_position">-3.14</param> 
+      <param name="max_position">3.14</param>
     </joint>
-
     <joint name="joint4">
-      <command_interface name="position">
-        <param name="initial_value">0.14</param>
-      </command_interface>
-      
-      <state_interface name="position">
-        <param name="initial_value">0.14</param>
-      </state_interface>
+      <command_interface name="position"/>
+      <state_interface name="position"/>
       <param name="min_position">0.05</param> 
       <param name="max_position">0.15</param>
     </joint>

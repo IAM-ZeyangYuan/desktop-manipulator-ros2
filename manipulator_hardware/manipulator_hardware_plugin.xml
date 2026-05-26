@@ -1,0 +1,9 @@
+<library path="manipulator_hardware">
+  <class name="manipulator_hardware/SimulatedRobot"
+         type="manipulator_hardware::SimulatedRobot"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Simulated hardware interface with first-order dynamics and encoder noise.
+    </description>
+  </class>
+</library>

@@ -1,11 +1,16 @@
-__pycache__/
-*.pyc
-*.pyo
+# colcon build artifacts
 build/
 install/
 log/
-.vscode/
+
+# Python
+__pycache__/
+*.pyc
 *.egg-info/
-dist/
-*.xlsx
-*.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
