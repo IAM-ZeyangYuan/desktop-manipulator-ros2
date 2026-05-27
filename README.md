@@ -1,7 +1,7 @@
 # Desktop Manipulator — ROS2
 
 **Duration:**  11/2024 – 02/2025, 03/2026 - present  
-**Tags:** `ROS2` · `ros2_control` ·`Python` · `Manipulator` · `Trajectory Planning`
+**Tags:** `ROS2` · `Gazebo` ·`Python` · `C++` · `Manipulator` · `Trajectory Planning` 
 
 
 
@@ -20,10 +20,14 @@ I designed a 4-DoF RRRP manipulator for simple desktop tasks such as holding and
 
 The project involves:
 - ROS2 architecture with `ros2_control`, `JointTrajectoryController`, and RViz2 marker visualization
+- Gazebo simulation with `gz_ros2_control`, trajectory error tracking with tunable controller gain
+- A stand-alone custom C++ hardware interface plugin with first-order dynamics simulation, encoder noise, and joint limit enforcement
 - Trajectory planning through 12 waypoints using cubic spline and parabolic blend interpolation
 - Self-collision checking along the planned trajectory
 - Workspace visualization and its Jacobian-based sensitivity analysis
 - The forward/inverse kinematics and Jacobian of the manipulator
+
+
 
  
 
@@ -60,16 +64,32 @@ The manipulator consists of 3 mutually orthogonal revolute joints and a prismati
 
 
 
-## ROS2 Integration
+## ROS2 Integration (with Gazebo)
 
-The project uses a standard `ros2_control` architecture:
+The project is structured as a standard `ros2_control` architecture using `JointTrajectoryController` with `gz_ros2_control` bridging to Gazebo Harmonic for physics simulation, with a custom planning node that sends interpolated trajectories via the `FollowJointTrajectory` action interface
 
-**Packages:**
-- `manipulator_description` — URDF/xacro robot model, `ros2_control` hardware and controller config, launch files, RViz config
+### Packages
+- `manipulator_description` — URDF/xacro robot model, `ros2_control` hardware and controller config, launch files, RViz config, world .sdf file
 - `manipulator_planning` — Trajectory interpolation, action client for `JointTrajectoryController`, FK module
 - `manipulator_interfaces` —  Custom interface for a waypoint-based trajectory planning service
+- `manipulator_hardware` - Custom harware interface plugin that simulates first-order dynamics and encoder noise
 
-**Data flow:** The trajectory planner node runs the interpolation and sends a `FollowJointTrajectory` action goal to the `JointTrajectoryController`, which commands the mock hardware interface. The `JointStateBroadcaster` publishes joint states, `robot_state_publisher` computes TF transforms, and RViz2 displays the robot model along with trajectory path and waypoint markers.
+### Gazebo Simulation
+ 
+The arm is simulated in Gazebo Harmonic with full physics (including specified `<collision>` and `<inertial>` link properties in the URDF file). 
+ 
+The simulation uses `gz_ros2_control` to bridge between the `ros2_control` controller stack and the Gazebo physics engine. The same controller configuration and planner code runs identically on mock hardware (for fast iteration) and in Gazebo (for physics-based validation) — the only change is the hardware plugin in the URDF.
+ 
+All ROS 2 nodes use `use_sim_time: true`, synchronized via the `/clock` topic bridged from Gazebo through `ros_gz_bridge`.
+ 
+<p align="center">
+  <img src="docs/images/gazebo_pic.png" width="300"/><br/>
+  <sub>Simulated manipulator in Gazebo</sub>
+</p>
+
+
+
+
 
 <!--## Prerequisites
 
@@ -79,7 +99,7 @@ The project uses a standard `ros2_control` architecture:
 - Python: NumPy, SciPy
 --->
 
-## Build
+### Build
 
 ```bash
 mkdir -p ~/manipulator_ws/src
@@ -92,20 +112,20 @@ colcon build
 source install/setup.bash
 ```
 
-## Run
+### Run
 
-### ros2_control with action-based trajectory execution
 
-Terminal 1 — launch the control pipeline:
+
+Terminal 1 — launch the Gazebo simulation:
 
 ```bash
-ros2 launch manipulator_description ros2_control.launch.py
+ros2 launch manipulator_description gazebo_sim.launch.py
 ```
 
-Terminal 2 — run the trajectory planner:
+Terminal 2 — run the trajectory planner that moves the manipulator through a pre-planned motion:
 
 ```bash
-ros2 run manipulator_planning trajectory_action_client
+ros2 run manipulator_planning trajectory_action_client --ros-args -p use_sim_time=true
 ```
 
 <!--
@@ -123,7 +143,7 @@ ros2 launch manipulator_description Display.launch.py
 ros2 launch manipulator_description trajectory.launch.py
 ```
 --->
-
+<!-- 
 ### Trajectory playback using service calls
 
 Terminal 1 — launch the service-based pipeline:
@@ -142,10 +162,63 @@ ros2 service call /plan_trajectory manipulator_interfaces/srv/PlanTrajectory "{
   d4: [0.14, 0.14, 0.15, 0.15, 0.09, 0.09, 0.08, 0.08, 0.14, 0.14, 0.15, 0.15],
   delta_t: 2.5
 }"
+``` -->
+
+
+
+
+## System Architecture & Data Flow
+ 
+When `gazebo_sim.launch.py` is launched and `trajectory_action_client` is run:
+ 
 ```
+trajectory_action_client
+│
+│  1. Runs cubic spline / parabolic blend interpolation on waypoints
+│  2. Packages result into a FollowJointTrajectory action goal
+│  3. Sends goal to the controller
+│
+│  FollowJointTrajectory (action)
+▼
+┌─── controller_manager (inside Gazebo process) ───────────────────────┐
+│                                                                      │
+│   JointTrajectoryController                                          │
+│   │  Receives trajectory goal, interpolates at each control cycle,   │
+│   │  writes position commands to the hardware interface              │
+│   │                                                                  │
+│   │  position commands                                               │
+│   ▼                                                                  │
+│   gz_ros2_control/GazeboSimSystem                                    │
+│   │  Gazebo physics engine executes the commanded positions,         │
+│   │  applies gravity, inertia, and contact forces                    │
+│   │                                                                  │
+│   │  joint states                                                    │
+│   ▼                                                                  │
+│   JointStateBroadcaster ──► /joint_states                            │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+                      robot_state_publisher
+                                 │
+                                 ▼
+                          /tf transforms
+                                 │
+                       ┌─────────┴─────────┐
+                       ▼                   ▼
+                    RViz2               Gazebo GUI
+```
+ 
 
+ 
+| File | Description |
+|------|------|
+| `manipulator.urdf.xacro` | Defines joints, links, `<ros2_control>` hardware interface (`GazeboSimSystem`), and `<gazebo>` plugin that loads `gz_ros2_control` |
+| `controllers.yaml` | Declares which controllers to load and maps them to joints |
+| `gazebo_sim.launch.py` | Starts Gazebo with the world, spawns the robot, spawns controllers, bridges `/clock`, starts `robot_state_publisher` and RViz2 |
+ 
 
-
+ 
 
 
 
@@ -161,8 +234,8 @@ At Δt = 2.5s, the resulting peak velocities and accelerations are within the in
 
 | | Revolute | Prismatic |
 |---|---|---|
-| Max velocity | 2.52 rad/s | 3.88 cm/s |
-| Max acceleration | 4.74 rad/s² | 3.84 cm/s² |
+| Max velocity | 2.52 rad/s | 38.8 mm/s |
+| Max acceleration | 4.74 rad/s² | 38.4 mm/s² |
 
 
 
@@ -171,19 +244,152 @@ At Δt = 2.5s, the resulting peak velocities and accelerations are within the in
 <table align="center">
   <tr>
     <td align="center">
-      <img src= "docs/images/traj_position.png" width="300"/><br/>
-      <sub>Joint variables along the planned trajectory</sub>
+      <img src= "docs/images/tracking_comparison.png" width="300"/><br/>
+      <sub>Joint variables (commanded vs simluated) along the motion</sub>
     </td>
     <td align="center">
-      <img src="docs/images/self_collision.png" width="300"/><br/>
-      <sub>Self-collision check</sub>
+      <img src= "docs/images/tracking_error.png" width="300"/><br/>
+      <sub>Joint tracking error over time</sub>
     </td>
   </tr>
 </table>
 
-### Self-Collision Check
+
+## Trajectory Tracking Analysis
+ 
+The `trajectory_action_client` logs both the commanded trajectory (from the interpolation output) and the actual trajectory (from `JointStateBroadcaster` via `/joint_states`) during execution. An offline analysis script `analyze_tracking.py` computes the following metrics:
+ 
+**Per-joint metrics:**
+ 
+| Metric | Joint 1 (θ₁) | Joint 2 (θ₂) | Joint 3 (θ₃) | Joint 4 (d₄) |
+|--------|--------------|--------------|--------------|--------------|
+| RMS tracking error | 0.0839 rad | 0.0392 rad | 0.2826 rad | 2.020 mm |
+| Max absolute error | 0.1699 rad | 0.1626 rad | 0.5237 rad | 8.700 mm |
+| Mean absolute error | 0.0735 rad | 0.0166 rad | 0.2480 rad | 0.948 mm |
+| Steady-state error | 0.0278 rad | 0.0000 rad | 0.1368 rad | 0.000 mm |
+
+**End-effector Cartesian error:**
+
+| RMS | Max | Mean |
+|-----|-----|------|
+| 35.930 mm | 71.837 mm | 33.184 mm |
+ 
+
+
+
+<p align="center">
+  <img src="docs/images/cartesian_error.png" width="300"/><br/>
+  <sub>End-effector Cartesian error</sub>
+</p>
+
+
+
+
+## Self-Collision Check
 
 A self-collision check was performed along the trajectory, focusing on the horizontal second link from the base and the inner body of the telescopic prismatic joint. The distance between the finite centerlines of the two bodies remains consistently above the collision threshold (sum of the radii). Configurations that cause self-collision exist in the workspace but can be mitigated by using a retractable prismatic joint.
+
+
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src= "docs/images/collision_visual.png" width="300"/><br/>
+      <sub>Target links of the collision check</sub>
+    </td>
+    <td align="center">
+      <img src="docs/images/self_collision.png" width="300"/><br/>
+      <sub>Self-collision check along the trajectory</sub>
+    </td>
+    
+  </tr>
+</table>
+
+
+## Custom Hardware Interface (`manipulator_hardware`)
+ 
+The `manipulator_hardware` package provides a C++ `ros2_control` hardware interface plugin that simulates realistic actuator behavior. It replaces the default `mock_components/GenericSystem` (which sets state = command with zero delay) with a physics-informed simulation layer that models first-order motor dynamics and encoder measurement noise.
+ 
+ 
+### Simulated dynamics
+ 
+The `read()` method models each joint as a first-order system. Rather than jumping instantly to the commanded position, the reported state approaches the target exponentially with a configurable time constant `tau`:
+ 
+```cpp
+double alpha = std::clamp(dt / tau_, 0.0, 1.0);
+ 
+for (std::size_t i = 0; i < num_joints_; i++) {
+  double target = hw_commands_positions_[i];
+  hw_states_positions_[i] += alpha * (target - hw_states_positions_[i]);
+  hw_states_positions_[i] += noise(gen);
+}
+```
+ 
+The smoothing factor `alpha = dt / tau` means:
+- Small `tau` (e.g., 0.02s) → fast response, nearly instant tracking
+- Large `tau` (e.g., 0.5s) → sluggish response, visible lag behind commands
+
+Gaussian noise (`std::normal_distribution`) is added after the dynamics update to simulate encoder quantization and electrical noise. Both `tau` and `noise_stddev` are configurable via URDF `<param>` tags without recompilation.
+ 
+### Joint limit enforcement
+ 
+The `write()` method clamps all incoming position commands to per-joint limits before they take effect:
+ 
+```cpp
+hw_commands_positions_[i] = std::clamp(
+  hw_commands_positions_[i],
+  joint_lower_limits_[i],
+  joint_upper_limits_[i]);
+```
+ 
+Limits are read from the URDF `<joint>` parameters during `on_init()`, keeping all configuration in a single source of truth.
+ 
+### Plugin registration
+ 
+The class is registered with `pluginlib` so that `controller_manager` can discover and load it at runtime from the URDF hardware description:
+ 
+```cpp
+PLUGINLIB_EXPORT_CLASS(
+  manipulator_hardware::SimulatedRobot,
+  hardware_interface::SystemInterface)
+```
+ 
+
+ 
+
+
+### Build
+
+Replace the `<hardware>` element in the URDF with the hardware interface
+```xml
+<!-- In the URDF file -->
+<ros2_control name="manipulator_system" type="system">
+  <hardware>
+    <plugin>manipulator_hardware/SimulatedRobot</plugin>
+    <param name="tau">0.1</param>
+    <param name="noise_stddev">0.001</param>
+  </hardware>
+  ...
+</ros2_control>
+```
+
+Build
+
+```bash
+cd manipulator_ws
+colcon build
+```
+Terminal 1 - launch a standard `ros2_control` architecture with the custom hardware interface
+```bash
+source install/setup.bash
+ros2 launch manipulator_description ros2_control.launch.py
+```
+Terminal 2 - run the trajectory planner that moves the manipulator through a pre-planned motion
+```bash
+source ~/manipulator_ws/install/setup.bash
+ros2 run manipulator_planning trajectory_action_client
+```
+
 
 ## Workspace
 
@@ -192,7 +398,7 @@ The workspace was generated using 3D alpha shape construction with 3.5 million j
 | Metric | Value |
 |---|---|
 | Estimated volume V| 1.376 × 10⁵ cm³ |
-| Max reach R| 65.565 cm |
+| Max reach R| 655.65 mm |
 | Workspace efficiency (V / (4/3 π R³)) | 0.117 |
 
 
@@ -362,7 +568,7 @@ $$
 
 ## Analysis Scripts
 
-The `python-analysis/` folder contains Python scripts used for trajectory planning, self collision check, workspace visualization, jacobian and sensitivity analysis.
+The `python-analysis/` folder contains Python scripts used for trajectory planning, error tracking, self collision check, workspace visualization, jacobian and sensitivity analysis.
 
 | Script | Description |
 |---|---|
@@ -372,11 +578,13 @@ The `python-analysis/` folder contains Python scripts used for trajectory planni
 | `sensitivity_analysis.py` | Jacobian-based sensitivity analysis on the end effector|
 | `workspace.py` | Workspace generation with 3D alpha shapes (! need to be run on GPU (Windows / native Linux)) |
 | `manipulator_visual.py` | 3D manipulator visualization with PyVista|
+| `analyze_tracking.py` | Error tracking along the planned trajectory|
 
 
+<!-- 
 ## Future Work
 
 - Account for actuator-level constraints (e.g. torque limits) by incorporating a rigid-body dynamics model into the trajectory planning process
 - Extend the self-collision check to include external environment geometry, enabling collision-aware trajectory planning for cluttered desktop scenes
-- Physical robot prototype with a custom `ros2_control` hardware interface
+- Physical robot prototype with a custom `ros2_control` hardware interface -->
 
