@@ -1,4 +1,4 @@
-# Desktop Manipulator — ROS2
+# 4 DoF Robot Arm (ROS2)
 
 **Duration:**  11/2024 – 02/2025, 03/2026 - present  
 **Tags:** `ROS2` · `Gazebo` ·`Python` · `C++` · `Manipulator` · `Trajectory Planning` 
@@ -72,14 +72,14 @@ The project is structured as a standard `ros2_control` architecture using `Joint
 - `manipulator_description` — URDF/xacro robot model, `ros2_control` hardware and controller config, launch files, RViz config, world .sdf file
 - `manipulator_planning` — Trajectory interpolation, action client for `JointTrajectoryController`, FK module
 - `manipulator_interfaces` —  Custom interface for a waypoint-based trajectory planning service
-- `manipulator_hardware` - Custom harware interface plugin that simulates first-order dynamics and encoder noise
+- `manipulator_hardware` — Custom harware interface plugin that simulates first-order dynamics and encoder noise
 
 ### Gazebo Simulation
  
 The arm is simulated in Gazebo Harmonic with full physics (including specified `<collision>` and `<inertial>` link properties in the URDF file). 
  
-The simulation uses `gz_ros2_control` to bridge between the `ros2_control` controller stack and the Gazebo physics engine. The same controller configuration and planner code runs identically on mock hardware (for fast iteration) and in Gazebo (for physics-based validation) — the only change is the hardware plugin in the URDF.
- 
+The simulation uses `gz_ros2_control` to bridge between the `ros2_control` controller stack and the Gazebo physics engine. The same controller configuration and planner code runs identically on mock hardware (for fast iteration) and in Gazebo (for physics-based validation).
+
 All ROS 2 nodes use `use_sim_time: true`, synchronized via the `/clock` topic bridged from Gazebo through `ros_gz_bridge`.
  
 <p align="center">
@@ -170,45 +170,12 @@ ros2 service call /plan_trajectory manipulator_interfaces/srv/PlanTrajectory "{
 ## System Architecture & Data Flow
  
 When `gazebo_sim.launch.py` is launched and `trajectory_action_client` is run:
- 
-```
-trajectory_action_client
-│
-│  1. Runs cubic spline / parabolic blend interpolation on waypoints
-│  2. Packages result into a FollowJointTrajectory action goal
-│  3. Sends goal to the controller
-│
-│  FollowJointTrajectory (action)
-▼
-┌─── controller_manager (inside Gazebo process) ───────────────────────┐
-│                                                                      │
-│   JointTrajectoryController                                          │
-│   │  Receives trajectory goal, interpolates at each control cycle,   │
-│   │  writes position commands to the hardware interface              │
-│   │                                                                  │
-│   │  position commands                                               │
-│   ▼                                                                  │
-│   gz_ros2_control/GazeboSimSystem                                    │
-│   │  Gazebo physics engine executes the commanded positions,         │
-│   │  applies gravity, inertia, and contact forces                    │
-│   │                                                                  │
-│   │  joint states                                                    │
-│   ▼                                                                  │
-│   JointStateBroadcaster ──► /joint_states                            │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-                      robot_state_publisher
-                                 │
-                                 ▼
-                          /tf transforms
-                                 │
-                       ┌─────────┴─────────┐
-                       ▼                   ▼
-                    RViz2               Gazebo GUI
-```
- 
+- The `trajectory_action_client` sends the planned trajectory to the controller through the `FollowJointTrajectory` action.
+- The `controller_manager` manages the control cycle inside Gazebo process
+- The `JointTrajectoryController` receives trajectory goal, writes position commands to the hardware interface `GazeboSimSystem`
+- Gazebo physics engine then executes the commanded positions, applies gravity, inertia, and contact forces, and outputs the actual positions to `/joint_states` through `JointStateBroadcaster`
+
+
 
  
 | File | Description |
@@ -249,7 +216,7 @@ At Δt = 2.5s, the resulting peak velocities and accelerations are within the in
     </td>
     <td align="center">
       <img src= "docs/images/tracking_error.png" width="300"/><br/>
-      <sub>Joint tracking error over time</sub>
+      <sub>Joint tracking error along the motion</sub>
     </td>
   </tr>
 </table>
@@ -278,7 +245,7 @@ The `trajectory_action_client` logs both the commanded trajectory (from the inte
 
 
 <p align="center">
-  <img src="docs/images/cartesian_error.png" width="300"/><br/>
+  <img src="docs/images/cartesian_error.png" width="450"/><br/>
   <sub>End-effector Cartesian error</sub>
 </p>
 
@@ -308,7 +275,7 @@ A self-collision check was performed along the trajectory, focusing on the horiz
 
 ## Custom Hardware Interface (`manipulator_hardware`)
  
-The `manipulator_hardware` package provides a C++ `ros2_control` hardware interface plugin that simulates realistic actuator behavior. It replaces the default `mock_components/GenericSystem` (which sets state = command with zero delay) with a physics-informed simulation layer that models first-order motor dynamics and encoder measurement noise.
+The `manipulator_hardware` package provides a C++ `ros2_control` hardware interface plugin that simulates realistic actuator behavior. It replaces the default `mock_components/GenericSystem` (which sets state = command with zero delay) with a physical simulation layer that models first-order motor dynamics and encoder measurement noise.
  
  
 ### Simulated dynamics
@@ -329,7 +296,7 @@ The smoothing factor `alpha = dt / tau` means:
 - Small `tau` (e.g., 0.02s) → fast response, nearly instant tracking
 - Large `tau` (e.g., 0.5s) → sluggish response, visible lag behind commands
 
-Gaussian noise (`std::normal_distribution`) is added after the dynamics update to simulate encoder quantization and electrical noise. Both `tau` and `noise_stddev` are configurable via URDF `<param>` tags without recompilation.
+Gaussian noise (`std::normal_distribution`) is added after the dynamics update to simulate encoder quantization and electrical noise. Both `tau` and `noise_stddev` are configurable via URDF `<param>` tags.
  
 ### Joint limit enforcement
  
@@ -342,8 +309,7 @@ hw_commands_positions_[i] = std::clamp(
   joint_upper_limits_[i]);
 ```
  
-Limits are read from the URDF `<joint>` parameters during `on_init()`, keeping all configuration in a single source of truth.
- 
+
 ### Plugin registration
  
 The class is registered with `pluginlib` so that `controller_manager` can discover and load it at runtime from the URDF hardware description:
@@ -360,7 +326,7 @@ PLUGINLIB_EXPORT_CLASS(
 
 ### Build
 
-Replace the `<hardware>` element in the URDF with the hardware interface
+Replace the `<hardware>` element in the URDF with the custom hardware interface
 ```xml
 <!-- In the URDF file -->
 <ros2_control name="manipulator_system" type="system">
@@ -376,15 +342,15 @@ Replace the `<hardware>` element in the URDF with the hardware interface
 Build
 
 ```bash
-cd manipulator_ws
+cd ~/manipulator_ws
 colcon build
 ```
-Terminal 1 - launch a standard `ros2_control` architecture with the custom hardware interface
+Terminal 1 — launch a standard `ros2_control` architecture with the custom hardware interface
 ```bash
-source install/setup.bash
+source ~/manipulator_ws/install/setup.bash
 ros2 launch manipulator_description ros2_control.launch.py
 ```
-Terminal 2 - run the trajectory planner that moves the manipulator through a pre-planned motion
+Terminal 2 — run the trajectory planner that moves the manipulator through a pre-planned motion
 ```bash
 source ~/manipulator_ws/install/setup.bash
 ros2 run manipulator_planning trajectory_action_client
