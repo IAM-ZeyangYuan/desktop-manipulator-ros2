@@ -1,4 +1,4 @@
-# 4 DoF Robot Arm (ROS2)
+# 4-DoF Robot Arm (ROS2)
 
 **Duration:**  11/2024 – 02/2025, 03/2026 - present  
 **Tags:** `ROS2` · `Gazebo` ·`Python` · `C++` · `Manipulator` · `Trajectory Planning` 
