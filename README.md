@@ -80,7 +80,7 @@ The arm is simulated in Gazebo Harmonic with full physics (including specified `
  
 The simulation uses `gz_ros2_control` to bridge between the `ros2_control` controller stack and the Gazebo physics engine. The same controller configuration and planner code runs identically on mock hardware (for fast iteration) and in Gazebo (for physics-based validation).
 
-All ROS 2 nodes use `use_sim_time: true`, synchronized via the `/clock` topic bridged from Gazebo through `ros_gz_bridge`.
+All ROS 2 nodes use `use_sim_time:=true`, synchronized via the `/clock` topic bridged from Gazebo through `ros_gz_bridge`.
  
 <p align="center">
   <img src="docs/images/gazebo_pic.png" width="300"/><br/>
@@ -125,7 +125,7 @@ ros2 launch manipulator_description gazebo_sim.launch.py
 Terminal 2 — run the trajectory planner that moves the manipulator through a pre-planned motion:
 
 ```bash
-ros2 run manipulator_planning trajectory_action_client --ros-args -p use_sim_time=true
+ros2 run manipulator_planning trajectory_action_client --ros-args -p use_sim_time:=true
 ```
 
 <!--
