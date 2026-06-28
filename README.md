@@ -326,6 +326,8 @@ PLUGINLIB_EXPORT_CLASS(
 
 ### Build
 
+Make sure the `use_sim_tim` in the `controllers.yaml` is set to `false`.
+
 Replace the `<hardware>` element in the URDF with the custom hardware interface
 ```xml
 <!-- In the URDF file -->
@@ -355,6 +357,11 @@ Terminal 2 — run the trajectory planner that moves the manipulator through a p
 source ~/manipulator_ws/install/setup.bash
 ros2 run manipulator_planning trajectory_action_client
 ```
+
+<p align="center">
+  <img src="docs/images/rviz2_cpp.gif" width="300"/><br/>
+  <sub>Trajectory animation with the custom hardware interface in RViz2</sub>
+</p>
 
 
 ## Workspace
